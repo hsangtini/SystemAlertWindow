@@ -8,16 +8,19 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.os.Build;
 import android.os.IBinder;
 import android.util.Log;
 import android.view.Gravity;
+import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
@@ -29,11 +32,18 @@ import in.jvapps.system_alert_window.R;
 import in.jvapps.system_alert_window.SystemAlertWindowPlugin;
 import in.jvapps.system_alert_window.models.Margin;
 import in.jvapps.system_alert_window.utils.Commons;
+import in.jvapps.system_alert_window.utils.Constants;
 import in.jvapps.system_alert_window.utils.NumberUtils;
 import in.jvapps.system_alert_window.utils.UiBuilder;
 import in.jvapps.system_alert_window.views.BodyView;
 import in.jvapps.system_alert_window.views.FooterView;
 import in.jvapps.system_alert_window.views.HeaderView;
+import io.flutter.embedding.engine.FlutterEngine;
+import io.flutter.embedding.engine.FlutterEngineCache;
+import io.flutter.embedding.engine.dart.DartExecutor;
+import io.flutter.plugin.common.BasicMessageChannel;
+import io.flutter.plugin.common.MethodChannel;
+import io.flutter.plugin.common.StringCodec;
 
 import static in.jvapps.system_alert_window.utils.Constants.INTENT_EXTRA_PARAMS_MAP;
 import static in.jvapps.system_alert_window.utils.Constants.KEY_BODY;
@@ -45,6 +55,9 @@ import static in.jvapps.system_alert_window.utils.Constants.KEY_MARGIN;
 import static in.jvapps.system_alert_window.utils.Constants.KEY_WIDTH;
 
 public class WindowServiceNew extends Service implements View.OnTouchListener {
+
+    public static MethodChannel methodChannel;
+
 
     private static final String TAG = WindowServiceNew.class.getSimpleName();
     public static final String CHANNEL_ID = "ForegroundServiceChannel";
@@ -60,9 +73,9 @@ public class WindowServiceNew extends Service implements View.OnTouchListener {
     private Margin windowMargin;
 
     private LinearLayout windowView;
-    private LinearLayout headerView;
-    private LinearLayout bodyView;
-    private LinearLayout footerView;
+//    private LinearLayout headerView;
+//    private LinearLayout bodyView;
+//    private LinearLayout footerView;
 
     private float offsetX;
     private float offsetY;
@@ -72,12 +85,28 @@ public class WindowServiceNew extends Service implements View.OnTouchListener {
 
     private Context mContext;
 
+    private String textSentence;
+
+
+    private final SystemAlertWindowPlugin systemAlertWindowPlugin = new SystemAlertWindowPlugin();
+
     @Override
     public void onCreate() {
         createNotificationChannel();
         Intent notificationIntent = new Intent(this, SystemAlertWindowPlugin.class);
-        PendingIntent pendingIntent = PendingIntent.getActivity(this,
-                0, notificationIntent, 0);
+
+        PendingIntent pendingIntent;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            pendingIntent = PendingIntent.getActivity(this,
+                    0, notificationIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
+
+        }else {
+            pendingIntent = PendingIntent.getActivity(this,
+                    0, notificationIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+
+        }
+//        PendingIntent pendingIntent = PendingIntent.getActivity(this,
+//                0, notificationIntent, 0);
         Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("Overlay window service is running")
                 .setSmallIcon(R.drawable.ic_desktop_windows_black_24dp)
@@ -129,19 +158,24 @@ public class WindowServiceNew extends Service implements View.OnTouchListener {
     }
 
     private void setWindowLayoutFromMap(HashMap<String, Object> paramsMap) {
-        Map<String, Object> headersMap = Commons.getMapFromObject(paramsMap, KEY_HEADER);
-        Map<String, Object> bodyMap = Commons.getMapFromObject(paramsMap, KEY_BODY);
-        Map<String, Object> footerMap = Commons.getMapFromObject(paramsMap, KEY_FOOTER);
-        Log.d(TAG, headersMap.toString());
+//        Map<String, Object> headersMap = Commons.getMapFromObject(paramsMap, KEY_HEADER);
+//        Map<String, Object> bodyMap = Commons.getMapFromObject(paramsMap, KEY_BODY);
+//        Map<String, Object> footerMap = Commons.getMapFromObject(paramsMap, KEY_FOOTER);
+//        Log.d(TAG, headersMap.toString());
+//        headerView = new HeaderView(mContext, headersMap).getView();
+//        if (bodyMap != null)
+//            bodyView = new BodyView(mContext, bodyMap).getView();
+//        if (footerMap != null)
+//            footerView = new FooterView(mContext, footerMap).getView();
+
+
         windowMargin = UiBuilder.getInstance().getMargin(mContext, paramsMap.get(KEY_MARGIN));
         windowGravity = (String) paramsMap.get(KEY_GRAVITY);
         windowWidth = NumberUtils.getInt(paramsMap.get(KEY_WIDTH));
         windowHeight = NumberUtils.getInt(paramsMap.get(KEY_HEIGHT));
-        headerView = new HeaderView(mContext, headersMap).getView();
-        if (bodyMap != null)
-            bodyView = new BodyView(mContext, bodyMap).getView();
-        if (footerMap != null)
-            footerView = new FooterView(mContext, footerMap).getView();
+
+
+        textSentence = (String) paramsMap.get("textSentence");
     }
 
     private WindowManager.LayoutParams getLayoutParams() {
@@ -168,23 +202,52 @@ public class WindowServiceNew extends Service implements View.OnTouchListener {
         return params;
     }
 
+    private boolean isDarkMode() {
+        switch (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK) {
+            case Configuration.UI_MODE_NIGHT_YES:
+                return true;
+            case Configuration.UI_MODE_NIGHT_NO:
+                return false;
+        }
+        return false;
+    }
+
     @SuppressLint("ClickableViewAccessibility")
     private void setWindowView(WindowManager.LayoutParams params, boolean isCreate) {
-        boolean isEnableDraggable = true;//params.width == WindowManager.LayoutParams.MATCH_PARENT;
+        boolean isEnableDraggable = false;//params.width == WindowManager.LayoutParams.MATCH_PARENT;
         if (isCreate) {
             windowView = new LinearLayout(mContext);
         }
         windowView.setOrientation(LinearLayout.VERTICAL);
-        windowView.setBackgroundColor(Color.WHITE);
+        windowView.setBackgroundColor(Color.TRANSPARENT);
         windowView.setLayoutParams(params);
         windowView.removeAllViews();
-        windowView.addView(headerView);
-        if (bodyView != null)
-            windowView.addView(bodyView);
-        if (footerView != null)
-            windowView.addView(footerView);
-        if (isEnableDraggable)
-            windowView.setOnTouchListener(this);
+
+        LayoutInflater layoutInflater = (LayoutInflater) getSystemService(LAYOUT_INFLATER_SERVICE);
+        View myView = layoutInflater.inflate(isDarkMode() ? R.layout.wrap_google_speech_dark : R.layout.wrap_google_speech, null);
+
+        final TextView textSentenceView =  (TextView) myView.findViewById(R.id.textSentence);
+        final View viewContentView =  myView.findViewById(R.id.viewContent);
+
+        viewContentView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if(methodChannel != null){
+                    methodChannel.invokeMethod("request_retry", null);
+                }
+            }
+        });
+
+        textSentenceView.setText(textSentence);
+        windowView.addView(myView);
+
+//        windowView.addView(headerView);
+//        if (bodyView != null)
+//            windowView.addView(bodyView);
+//        if (footerView != null)
+//            windowView.addView(footerView);
+//        if (isEnableDraggable)
+//            windowView.setOnTouchListener(this);
     }
 
     private void createWindow(HashMap<String, Object> paramsMap) {
@@ -207,7 +270,7 @@ public class WindowServiceNew extends Service implements View.OnTouchListener {
         }
         closeWindow(false);
         setWindowManager();
-        //setWindowLayoutFromMap(paramsMap);
+        setWindowLayoutFromMap(paramsMap);
         WindowManager.LayoutParams params = getLayoutParams();
         setWindowView(params, true);
         try {

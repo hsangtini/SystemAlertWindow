@@ -133,7 +133,27 @@ public class NotificationHelper {
         Intent bubbleIntent = new Intent(mContext, BubbleActivity.class);
         bubbleIntent.setAction(Intent.ACTION_VIEW);
         bubbleIntent.putExtra(INTENT_EXTRA_PARAMS_MAP, params);
-        PendingIntent pendingIntent = PendingIntent.getActivity(mContext, REQUEST_BUBBLE, bubbleIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+//        PendingIntent pendingIntent = PendingIntent.getActivity(mContext, REQUEST_BUBBLE, bubbleIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+        PendingIntent pendingIntent = null;
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            pendingIntent = PendingIntent.getActivity
+                    (mContext, REQUEST_BUBBLE, bubbleIntent, PendingIntent.FLAG_MUTABLE);
+        }
+        else
+        {
+            pendingIntent = PendingIntent.getActivity
+                    (mContext, REQUEST_BUBBLE, bubbleIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+        }
+
+        PendingIntent contentIntent = null;
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            contentIntent = PendingIntent.getActivity
+                    (mContext, REQUEST_BUBBLE, bubbleIntent, PendingIntent.FLAG_MUTABLE);
+        }
+        else
+        {
+            contentIntent = PendingIntent.getActivity(mContext, REQUEST_CONTENT, bubbleIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+        }
         long now = currentTimeMillis() - 100;
         Notification.Builder builder = new Notification.Builder(mContext, CHANNEL_ID)
                 .setBubbleMetadata(createBubbleMetadata(icon, pendingIntent))
@@ -144,7 +164,7 @@ public class NotificationHelper {
                 .setLocusId(new LocusId(BUBBLE_SHORTCUT_ID))
                 .addPerson(person)
                 .setShowWhen(true)
-                .setContentIntent(PendingIntent.getActivity(mContext, REQUEST_CONTENT, bubbleIntent, PendingIntent.FLAG_UPDATE_CURRENT))
+                .setContentIntent(contentIntent)
                 .setStyle(new Notification.MessagingStyle(user)
                         .addMessage(new Notification.MessagingStyle.Message(notificationBody, now, person))
                         .setGroupConversation(false))

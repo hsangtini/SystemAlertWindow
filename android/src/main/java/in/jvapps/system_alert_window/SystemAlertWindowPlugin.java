@@ -18,6 +18,7 @@ import android.util.Log;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 
 import com.google.gson.Gson;
@@ -41,17 +42,20 @@ import io.flutter.embedding.engine.dart.DartExecutor;
 import io.flutter.embedding.engine.plugins.FlutterPlugin;
 import io.flutter.embedding.engine.plugins.activity.ActivityAware;
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding;
+import io.flutter.plugin.common.BasicMessageChannel;
 import io.flutter.plugin.common.JSONMethodCodec;
 import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
 import io.flutter.plugin.common.MethodChannel.Result;
 import io.flutter.plugin.common.PluginRegistry.Registrar;
+import io.flutter.plugin.common.StringCodec;
 import io.flutter.view.FlutterCallbackInformation;
 
 public class SystemAlertWindowPlugin extends Activity implements FlutterPlugin, ActivityAware, MethodCallHandler {
 
     private final String flutterEngineId = "system_alert_window_engine";
+
     private Context mContext;
     private Activity mActivity;
     public AtomicBoolean sIsIsolateRunning = new AtomicBoolean(false);
@@ -113,6 +117,8 @@ public class SystemAlertWindowPlugin extends Activity implements FlutterPlugin, 
     @Override
     public void onAttachedToActivity(@NonNull ActivityPluginBinding activityPluginBinding) {
         this.mActivity = activityPluginBinding.getActivity();
+
+        WindowServiceNew.methodChannel = methodChannel;
     }
 
     @Override
@@ -194,6 +200,7 @@ public class SystemAlertWindowPlugin extends Activity implements FlutterPlugin, 
                             i.putExtra(INTENT_EXTRA_IS_UPDATE_WINDOW, false);
                             //WindowService.enqueueWork(mContext, i);
                             mContext.startService(i);
+
                         } else {
                             Toast.makeText(mContext, "Please give draw over other apps permission", Toast.LENGTH_LONG).show();
                             result.success(false);
@@ -419,6 +426,7 @@ public class SystemAlertWindowPlugin extends Activity implements FlutterPlugin, 
                         Toast.makeText(mContext, "Can Draw Over Other Apps permission is required. Please grant it from the app settings", Toast.LENGTH_LONG).show();
                     }
                 } else {
+                    Toast.makeText(mContext, "Please grant, Can Draw Over Other Apps permission.", Toast.LENGTH_LONG).show();
                     mActivity.startActivityForResult(intent, ACTION_MANAGE_OVERLAY_PERMISSION_REQUEST_CODE);
                 }
             } else {
@@ -445,4 +453,5 @@ public class SystemAlertWindowPlugin extends Activity implements FlutterPlugin, 
         NotificationHelper notificationHelper = NotificationHelper.getInstance(mContext);
         notificationHelper.showNotification(icon, title, body, params);
     }
+
 }

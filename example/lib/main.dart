@@ -176,9 +176,9 @@ class _MyAppState extends State<MyApp> {
           buttonsPosition: ButtonPosition.CENTER);
       SystemAlertWindow.showSystemWindow(
           height: 230,
-          header: header,
-          body: body,
-          footer: footer,
+          // header: header,
+          // body: body,
+          // footer: footer,
           margin: SystemWindowMargin(left: 8, right: 8, top: 200, bottom: 0),
           gravity: SystemWindowGravity.TOP,
           notificationTitle: "Incoming Call",

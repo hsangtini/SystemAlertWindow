@@ -30,29 +30,26 @@ enum FontWeight { NORMAL, BOLD, ITALIC, BOLD_ITALIC }
 enum SystemWindowPrefMode { DEFAULT, OVERLAY, BUBBLE }
 
 class SystemAlertWindow {
-  static const MethodChannel _channel =
-      const MethodChannel(Constants.CHANNEL, JSONMethodCodec());
+  static const MethodChannel _channel = const MethodChannel(Constants.CHANNEL, JSONMethodCodec());
 
   static Future<String?> get platformVersion async {
     final String? version = await _channel.invokeMethod('getPlatformVersion');
     return version;
   }
 
-  static Future<bool?> checkPermissions(
-      {SystemWindowPrefMode prefMode = SystemWindowPrefMode.DEFAULT}) async {
+  static Future<bool?> checkPermissions({SystemWindowPrefMode prefMode = SystemWindowPrefMode.DEFAULT}) async {
     return await _channel.invokeMethod(
         'checkPermissions', [Commons.getSystemWindowPrefMode(prefMode)]);
   }
 
-  static Future<bool?> requestPermissions(
-      {SystemWindowPrefMode prefMode = SystemWindowPrefMode.DEFAULT}) async {
+  static Future<bool?> requestPermissions({SystemWindowPrefMode prefMode = SystemWindowPrefMode.DEFAULT}) async {
     return await _channel.invokeMethod(
         'requestPermissions', [Commons.getSystemWindowPrefMode(prefMode)]);
   }
 
   static Future<bool> registerOnClickListener(Function callBackFunction) async {
     final callBackDispatcher =
-        PluginUtilities.getCallbackHandle(callbackDispatcher);
+    PluginUtilities.getCallbackHandle(callbackDispatcher);
     final callBack = PluginUtilities.getCallbackHandle(callBackFunction);
 
     _channel.setMethodCallHandler((MethodCall call) {
@@ -75,26 +72,31 @@ class SystemAlertWindow {
     return true;
   }
 
-  static Future<bool?> showSystemWindow(
-      {required SystemWindowHeader header,
-      SystemWindowBody? body,
-      SystemWindowFooter? footer,
-      SystemWindowMargin? margin,
-      SystemWindowGravity gravity = SystemWindowGravity.CENTER,
-      int? width,
-      int? height,
-      String notificationTitle = "Title",
-      String notificationBody = "Body",
-      SystemWindowPrefMode prefMode = SystemWindowPrefMode.DEFAULT}) async {
+  static Future<bool?> showSystemWindow({
+    SystemWindowMargin? margin,
+    SystemWindowGravity gravity = SystemWindowGravity.CENTER,
+    int? width,
+    int? height,
+    String notificationTitle = "Title",
+    String notificationBody = "Body",
+    SystemWindowPrefMode prefMode = SystemWindowPrefMode.DEFAULT,
+    String textSentence = "Body",
+    Function? onRetry,
+  }) async {
     final Map<String, dynamic> params = <String, dynamic>{
-      'header': header.getMap(),
-      'body': body?.getMap(),
-      'footer': footer?.getMap(),
       'margin': margin?.getMap(),
       'gravity': Commons.getWindowGravity(gravity),
       'width': width ?? Constants.MATCH_PARENT,
-      'height': height ?? Constants.WRAP_CONTENT
+      'height': height ?? Constants.WRAP_CONTENT,
+      'textSentence': textSentence,
     };
+
+    _channel.setMethodCallHandler((call) async {
+      if(call.method == 'request_retry'){
+        onRetry?.call();
+      }
+    });
+
     return await _channel.invokeMethod('showSystemWindow', [
       notificationTitle,
       notificationBody,
@@ -103,17 +105,16 @@ class SystemAlertWindow {
     ]);
   }
 
-  static Future<bool?> updateSystemWindow(
-      {required SystemWindowHeader header,
-      SystemWindowBody? body,
-      SystemWindowFooter? footer,
-      SystemWindowMargin? margin,
-      SystemWindowGravity gravity = SystemWindowGravity.CENTER,
-      int? width,
-      int? height,
-      String notificationTitle = "Title",
-      String notificationBody = "Body",
-      SystemWindowPrefMode prefMode = SystemWindowPrefMode.DEFAULT}) async {
+  static Future<bool?> updateSystemWindow({required SystemWindowHeader header,
+    SystemWindowBody? body,
+    SystemWindowFooter? footer,
+    SystemWindowMargin? margin,
+    SystemWindowGravity gravity = SystemWindowGravity.CENTER,
+    int? width,
+    int? height,
+    String notificationTitle = "Title",
+    String notificationBody = "Body",
+    SystemWindowPrefMode prefMode = SystemWindowPrefMode.DEFAULT}) async {
     final Map<String, dynamic> params = <String, dynamic>{
       'header': header.getMap(),
       'body': body?.getMap(),
@@ -131,17 +132,17 @@ class SystemAlertWindow {
     ]);
   }
 
-  static Future<bool?> closeSystemWindow(
-      {SystemWindowPrefMode prefMode = SystemWindowPrefMode.DEFAULT}) async {
+  static Future<bool?> closeSystemWindow({SystemWindowPrefMode prefMode = SystemWindowPrefMode.DEFAULT}) async {
     return await _channel.invokeMethod(
         'closeSystemWindow', [Commons.getSystemWindowPrefMode(prefMode)]);
   }
+
 }
 
 void callbackDispatcher() {
   // 1. Initialize MethodChannel used to communicate with the platform portion of the plugin
   const MethodChannel _backgroundChannel =
-      const MethodChannel(Constants.BACKGROUND_CHANNEL, JSONMethodCodec());
+  const MethodChannel(Constants.BACKGROUND_CHANNEL, JSONMethodCodec());
   // 2. Setup internal state needed for MethodChannels.
   WidgetsFlutterBinding.ensureInitialized();
 
